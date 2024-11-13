@@ -18,15 +18,18 @@ tar --extract --xattrs --xattrs-include 'security.*' --directory "$chroot_dir" <
 mount --rbind --make-rprivate /proc "$chroot_dir/proc"
 mount --rbind --make-rprivate /proc "$chroot_dir/sys"
 mount --rbind --make-rprivate /dev "$chroot_dir/dev"
-mkdir "$chroot_dir/builder"
-mount --rbind --make-rprivate /builder "$chroot_dir/builder"
+
+mkdir "$chroot_dir/mnt/builder"
+mount --rbind --make-rprivate /opt/builder "$chroot_dir/mnt/builder"
 touch "$chroot_dir/output"
 mount --bind "$output" "$chroot_dir/output"
-chroot "$chroot_dir" /builder/configure_nativetools.chroot "$@"
+chroot "$chroot_dir" /mnt/builder/configure_nativetools_chrooted.sh "$@"
 umount "$chroot_dir/output"
-umount -l "$chroot_dir/builder"
+umount -l "$chroot_dir/mnt/builder"
+
 umount -l "$chroot_dir/proc"
 umount -l "$chroot_dir/sys"
 umount -l "$chroot_dir/dev"
+
 umount "$chroot_dir"
 rmdir "$chroot_dir"
