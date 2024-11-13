@@ -28,22 +28,28 @@ LABEL org.opencontainers.image.description="Builder for Garden Linux"
 
 COPY pkg.list /pkg.list
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends $(cat /pkg.list) && rm /pkg.list
+
 RUN cd /tmp \
 && curl -sSL "https://github.com/gardenlinux/package-openssl/releases/download/3.1.4-2gardenlinux0/openssl_3.1.4-2gardenlinux0_$(dpkg --print-architecture).deb" > openssl.deb \
 && dpkg -i openssl.deb \
 && rm openssl.deb
+
 COPY --from=mv_data /usr/bin/mv_data /usr/bin/mv_data
 COPY --from=aws-kms-pkcs11 /aws_kms_pkcs11.so /aws_kms_pkcs11.so
 COPY --from=datefudge /usr/lib/datefudge/datefudge.so /usr/lib/datefudge/datefudge.so
 COPY --from=datefudge /usr/bin/datefudge /usr/bin/datefudge
 COPY --from=resizefat32 /usr/bin/resizefat32 /usr/bin/resizefat32
 RUN mv /aws_kms_pkcs11.so "/usr/lib/$(uname -m)-linux-gnu/pkcs11/aws_kms_pkcs11.so"
-COPY builder /builder
-RUN mkdir /builder/cert
-COPY setup_namespace /usr/sbin/setup_namespace
+
+COPY builder /opt/builder
+RUN mkdir /opt/builder/cert
+
 RUN curl -sSLf https://github.com/gardenlinux/seccomp_fake_xattr/releases/download/latest/seccomp_fake_xattr-$(uname -m).tar.gz \
 	| gzip -d \
-	| tar -xO seccomp_fake_xattr-$(uname -m)/fake_xattr > /usr/bin/fake_xattr \
-	&& chmod +x /usr/bin/fake_xattr
+	| tar -xO seccomp_fake_xattr-$(uname -m)/fake_xattr > /usr/sbin/fake_xattr \
+	&& chmod +x /usr/sbin/fake_xattr
+
 RUN echo 'root:1:65535' | tee /etc/subuid /etc/subgid > /dev/null
+
+COPY ./scripts/setup_namespace.sh /usr/sbin/setup_namespace
 ENTRYPOINT [ "/usr/sbin/setup_namespace" ]

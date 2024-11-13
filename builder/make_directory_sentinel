@@ -9,7 +9,7 @@ dir="$1"
 dir_escaped="$(echo "$dir" | sed 's|/|-|')"
 
 timestamp="$(find "$dir" -printf '%T@\n' | sort | tail -n 1)"
-file=".build/$dir_escaped.sentinel"
+file="/mnt/builder-target/$dir_escaped.sentinel"
 touch -d "@$timestamp" "$file"
 
 echo "$file" >&3

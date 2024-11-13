@@ -8,7 +8,7 @@ exec 1>&2
 repo="$1"
 version="$2"
 repo_escaped="$(echo "$repo" | sed 's|https*://||;s|/|-|g')"
-file=".build/$repo_escaped-$version.sentinel"
+file="/mnt/builder-target/$repo_escaped-$version.sentinel"
 
 old_release="$([ ! -e "$file" ] || cat "$file")"
 new_release="$(curl -s "$repo/dists/$version/InRelease" | sha256sum | head -c 64)"

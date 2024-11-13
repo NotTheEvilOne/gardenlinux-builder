@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 
-set -eufo pipefail
+set -efo pipefail
 
 target="$1"
+target_name="$(basename $1)"
 shift
 
 echo -n | cat "${@/%/.log}" > "$target.log"
 
 while IFS= read -r line; do
 	date="$(date -u '+%Y-%m-%d %H:%M:%S')"
-	printf '[%s %s] %s\n' "$target" "$date" "$line"
+
+	if [ "${CI}" == "true" ]; then
+		printf '[%s] %s\n' "$target_name" "$line"
+	else
+		printf '[%s %s] %s\n' "$target_name" "$date" "$line"
+	fi
+
 	printf '[%s] %s\n' "$date" "$line" >> "$target.log"
 done
