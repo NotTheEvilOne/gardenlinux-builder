@@ -3,11 +3,12 @@
 set -eufo pipefail
 
 IFS=',' read -r -a features <<< "$BUILDER_FEATURES"
+builder_dir="/mnt/builder"
 
 for feature in "${features[@]}"; do
-	if [ -e "/builder/features/$feature/exec.early" ]; then
-		printf 'exec: %s\n' "/builder/features/$feature/exec.early"
-		"/builder/features/$feature/exec.early" 2>&1 | sed 's/^/  /'
+	if [ -e "${builder_dir}/features/$feature/exec.early" ]; then
+		printf 'exec: %s\n' "${builder_dir}/features/$feature/exec.early"
+		"${builder_dir}/features/$feature/exec.early" 2>&1 | sed 's/^/  /'
 	fi
 done
 
@@ -15,8 +16,8 @@ pkg_include="$(mktemp)"
 pkg_exclude="$(mktemp)"
 
 for feature in "${features[@]}"; do
-	[ ! -e "/builder/features/$feature/pkg.include" ] || cat "/builder/features/$feature/pkg.include" >> "$pkg_include" && echo >> "$pkg_include"
-	[ ! -e "/builder/features/$feature/pkg.exclude" ] || cat "/builder/features/$feature/pkg.exclude" >> "$pkg_exclude" && echo >> "$pkg_include"
+	[ ! -e "${builder_dir}/features/$feature/pkg.include" ] || cat "${builder_dir}/features/$feature/pkg.include" >> "$pkg_include" && echo >> "$pkg_include"
+	[ ! -e "${builder_dir}/features/$feature/pkg.exclude" ] || cat "${builder_dir}/features/$feature/pkg.exclude" >> "$pkg_exclude" && echo >> "$pkg_include"
 done
 
 dir="$(mktemp -d)"
@@ -59,9 +60,9 @@ INITRD=No DEBIAN_FRONTEND=noninteractive apt-get install -o DPkg::Path="$PATH" -
 rm "$pkg_list"
 
 for feature in "${features[@]}"; do
-	if [ -d "/builder/features/$feature/file.include" ]; then
-		cp --recursive --no-target-directory --remove-destination --preserve=mode,link "/builder/features/$feature/file.include" /
-		find "/builder/features/$feature/file.include" -mindepth 1 -printf '/%P\n' | while read -r file; do
+	if [ -d "${builder_dir}/features/$feature/file.include" ]; then
+		cp --recursive --no-target-directory --remove-destination --preserve=mode,link "${builder_dir}/features/$feature/file.include" /
+		find "${builder_dir}/features/$feature/file.include" -mindepth 1 -printf '/%P\n' | while read -r file; do
 			[ -L "$file" ] || chmod u+rw,go=u-w "$file"
 			printf 'included %s\n' "$file"
 		done
@@ -69,8 +70,8 @@ for feature in "${features[@]}"; do
 done
 
 for feature in "${features[@]}"; do
-	if [ -e "/builder/features/$feature/file.include.stat" ]; then
-		sed 's/#.*$//;/^[[:space:]]*$/d' "/builder/features/$feature/file.include.stat" | while read -r user group perm files; do
+	if [ -e "${builder_dir}/features/$feature/file.include.stat" ]; then
+		sed 's/#.*$//;/^[[:space:]]*$/d' "${builder_dir}/features/$feature/file.include.stat" | while read -r user group perm files; do
 			set +f
 			shopt -s globstar
 			shopt -s nullglob
@@ -86,24 +87,24 @@ for feature in "${features[@]}"; do
 done
 
 for feature in "${features[@]}"; do
-	if [ -e "/builder/features/$feature/exec.config" ]; then
-		printf 'exec: %s\n' "/builder/features/$feature/exec.config"
-		"/builder/features/$feature/exec.config" 2>&1 | sed 's/^/  /'
+	if [ -e "${builder_dir}/features/$feature/exec.config" ]; then
+		printf 'exec: %s\n' "${builder_dir}/features/$feature/exec.config"
+		"${builder_dir}/features/$feature/exec.config" 2>&1 | sed 's/^/  /'
 	fi
 done
 
 for feature in "${features[@]}"; do
-	if [ -e "/builder/features/$feature/exec.late" ]; then
-		printf 'exec: %s\n' "/builder/features/$feature/exec.late"
-		"/builder/features/$feature/exec.late" 2>&1 | sed 's/^/  /'
+	if [ -e "${builder_dir}/features/$feature/exec.late" ]; then
+		printf 'exec: %s\n' "${builder_dir}/features/$feature/exec.late"
+		"${builder_dir}/features/$feature/exec.late" 2>&1 | sed 's/^/  /'
 	fi
 done
 
 rm_files_list="$(mktemp)"
 
 for feature in "${features[@]}"; do
-	if [ -e "/builder/features/$feature/file.exclude" ]; then
-		sed 's/#.*$//;/^[[:space:]]*$/d' "/builder/features/$feature/file.exclude" | while read -r exclude; do
+	if [ -e "${builder_dir}/features/$feature/file.exclude" ]; then
+		sed 's/#.*$//;/^[[:space:]]*$/d' "${builder_dir}/features/$feature/file.exclude" | while read -r exclude; do
 			set +f
 			shopt -s globstar
 			shopt -s nullglob
