@@ -34,24 +34,24 @@ export AWS_DEFAULT_REGION AWS_REGION AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS
 .PHONY: clean
 
 clean:
-	find .build -mindepth 1 -delete
+	find /mnt/builder-target -mindepth 1 -delete
 
-.build/%.sentinel:
+/mnt/builder-target/%.sentinel:
 	true
 
-.build/bootstrap-%-$(SHORT_COMMIT).tar: $$(shell ./make_repo_sentinel $$(REPO) $$(call cname_version,$$*))
+/mnt/builder-target/bootstrap-%-$(SHORT_COMMIT).tar: $$(shell ./make_repo_sentinel $$(REPO) $$(call cname_version,$$*))
 	target '$@'
 	info 'bootstrapping $*-$(SHORT_COMMIT)'
 	arch='$(call cname_arch,$*)'
 	version='$(call cname_version,$*)'
-	./bootstrap "$$arch" "$$version" '$(REPO)' keyring.gpg '$@'
+	./bootstrap.sh "$$arch" "$$version" '$(REPO)' keyring.gpg '$@'
 
-.build/native_bin-%-$(SHORT_COMMIT).tar: .build/bootstrap-$(NATIVE_ARCH)-%-$(SHORT_COMMIT).tar
+/mnt/builder-target/native_bin-%-$(SHORT_COMMIT).tar: /mnt/builder-target/bootstrap-$(NATIVE_ARCH)-%-$(SHORT_COMMIT).tar
 	target '$@'
 	info 'configuring native_bin'
-	./configure_nativetools '$<' '$@' $(NATIVE_PKGS)
+	./configure_nativetools.sh '$<' '$@' $(NATIVE_PKGS)
 
-.build/%-$(SHORT_COMMIT).tar: .build/bootstrap-$$(call cname_arch,$$*)-$$(call cname_version,$$*)-$(SHORT_COMMIT).tar .build/native_bin-$$(call cname_version,$$*)-$(SHORT_COMMIT).tar $(shell ./make_directory_sentinel features) $(shell ./make_directory_sentinel cert)
+/mnt/builder-target/%-$(SHORT_COMMIT).tar: /mnt/builder-target/bootstrap-$$(call cname_arch,$$*)-$$(call cname_version,$$*)-$(SHORT_COMMIT).tar /mnt/builder-target/native_bin-$$(call cname_version,$$*)-$(SHORT_COMMIT).tar $(shell ./make_directory_sentinel features) $(shell ./make_directory_sentinel cert)
 	target '$@' '$<'
 	info 'configuring rootfs $*-$(SHORT_COMMIT)'
 	features="$$(./parse_features --feature-dir features --cname '$*' features)"
@@ -62,10 +62,10 @@ clean:
 	BUILDER_COMMIT='$(COMMIT)'
 	BUILDER_FEATURES="$$features"
 	export BUILDER_CNAME BUILDER_VERSION BUILDER_ARCH BUILDER_TIMESTAMP BUILDER_COMMIT BUILDER_FEATURES
-	./configure '$(word 1,$^)' '$(word 2,$^)' '$@'
+	./build.sh '$(word 1,$^)' '$(word 2,$^)' '$@'
 
 define artifact_template =
-.build/%-$(SHORT_COMMIT).$1: $$$$(shell COMMIT=$(SHORT_COMMIT) ./make_get_image_dependencies '$$$$@') $$(shell ./make_directory_sentinel features) $$(shell ./make_directory_sentinel cert)
+/mnt/builder-target/%-$(SHORT_COMMIT).$1: $$$$(shell COMMIT=$(SHORT_COMMIT) ./make_get_image_dependencies '$$$$@') $$(shell ./make_directory_sentinel features) $$(shell ./make_directory_sentinel cert)
 	script='$$(word 1,$$^)'
 	input='$$(word 2,$$^)'
 	target '$$@' "$$$$input"
@@ -83,7 +83,7 @@ endef
 
 $(foreach artifact_rule,$(shell ./make_get_artifact_rules),$(eval $(call artifact_template,$(artifact_rule))))
 
-.build/%-$(SHORT_COMMIT).artifacts: $$(shell COMMIT=$(SHORT_COMMIT) ./make_list_build_artifacts '$$*')
+/mnt/builder-target/%-$(SHORT_COMMIT).artifacts: $$(shell COMMIT=$(SHORT_COMMIT) ./make_list_build_artifacts '$$*')
 	target '$@'
 	echo -n > '$@'
 	for f in $^; do
@@ -91,8 +91,8 @@ $(foreach artifact_rule,$(shell ./make_get_artifact_rules),$(eval $(call artifac
 		echo "$$(basename "$$f").log" | tee -a '$@'
 	done
 
-%: .build/$$(shell ./parse_features --feature-dir features --default-arch '$$(NATIVE_ARCH)' --default-version '$$(DEFAULT_VERSION)' --cname '$$*')-$(SHORT_COMMIT).artifacts
-	ln -f -s -r '$<' '.build/$*'
+%: /mnt/builder-target/$$(shell ./parse_features --feature-dir features --default-arch '$$(NATIVE_ARCH)' --default-version '$$(DEFAULT_VERSION)' --cname '$$*')-$(SHORT_COMMIT).artifacts
+	ln -f -s -r '$<' '/mnt/builder-target/$*'
 
 # prevents match anything rule from applying to Makefile and image/convert scripts
 Makefile image image.release image.manifest $(shell find features -name 'convert.*' -o -name image -o -name 'image.*'):
